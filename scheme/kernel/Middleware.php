@@ -40,34 +40,50 @@
  */
 class Middleware
 {
-    /**
-     * Map
-     *
-     * @var array
-     */
     protected $map = [];
 
-    /**
-     * Constructor
-     */
     public function __construct()
     {
-        $config = get_config();
+        // Load middleware configuration
+        $middleware_config = APP_DIR . 'config/middleware.php';
+
+        if (!file_exists($middleware_config)) {
+            throw new RuntimeException('Middleware config file not found.');
+        }
+
+        // This creates $config['middlewares']
+        require $middleware_config;
 
         if (!isset($config['middlewares'])) {
             throw new RuntimeException('Middleware config not found.');
         }
 
-        $this->map = $config['middlewares'];
+        foreach ($config['middlewares'] as $name => $middleware) {
+
+            // Example:
+            // $name = student
+            // $middleware = StudentMiddleware
+
+            $file = APP_DIR . 'middlewares/' . $middleware . '.php';
+
+            if (!file_exists($file)) {
+                throw new RuntimeException(
+                    "Middleware file {$middleware}.php not found."
+                );
+            }
+
+            require_once $file;
+
+            if (!class_exists($middleware)) {
+                throw new RuntimeException(
+                    "Middleware class {$middleware} not found."
+                );
+            }
+
+            $this->map[$name] = new $middleware();
+        }
     }
 
-    /**
-     * Run the middleware pipeline
-     *
-     * @param array $middlewares
-     * @param Closure $destination
-     * @return mixed
-     */
     public function run(array $middlewares, Closure $destination)
     {
         $pipeline = array_reduce(
@@ -83,20 +99,14 @@ class Middleware
         return $pipeline();
     }
 
-    /**
-     * Resolve a middleware
-     *
-     * @param string $middleware
-     * @param Closure $next
-     * @return mixed
-     */
     protected function resolve($middleware, $next)
     {
         if (!isset($this->map[$middleware])) {
-            throw new Exception("Middleware [$middleware] not registered.");
+            throw new Exception(
+                "Middleware [$middleware] not registered."
+            );
         }
 
         return $this->map[$middleware]->handle($next);
     }
 }
-
