@@ -9,8 +9,6 @@ defined('PREVENT_DIRECT_ACCESS') OR exit('No direct script access allowed');
 class UsersController extends Controller {
     public function show_users() {
         $users = $this->UsersModel->all();
-        ddt($users, 'Users');
-        $this->call->view('users');
-    
+        $this->call->view('users', ['users' => $users]);
     }  
 }
